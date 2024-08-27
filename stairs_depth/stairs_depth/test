@@ -1,0 +1,144 @@
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Float32MultiArray
+import numpy as np
+from scipy.interpolate import interp1d
+import cv2
+from scipy.signal import lfilter
+
+class DepthArraySubscriber(Node):
+    def __init__(self):
+        super().__init__('depth_array_subscriber')
+        self.subscription = self.create_subscription(
+            Float32MultiArray,
+            '/depth_array_msg',
+            self.opencv_graph,
+            10)
+        self.subscription  # prevent unused variable warning
+        
+        #publisher setting
+        self.publisher_ = self.create_publisher(
+            Float32MultiArray, 
+            '/diff_array_msg', 
+            10)
+
+    def opencv_graph(self, msg):
+        depth_array = msg.data
+        
+        height = 480
+        width = 640
+        img = np.zeros((height, width, 3), dtype=np.uint8)
+        
+        if len(depth_array) == 0:
+            cv2.imshow('Depth Array', img)
+            cv2.waitKey(1)
+            return
+        
+        x = np.arange(len(depth_array))
+        y = np.array(depth_array)
+        y.reverse()
+        # y[:5] = y[5]; y[-5:] = y[-1]
+
+        #
+        noise_value_num = [i for i in range(len(y)) if np.isclose(y[i], 0.0, atol=1e-6)]
+        
+        for idx in noise_value_num:
+            if idx == 0:
+                y[idx] = y[idx + 1] if idx + 1 < len(y) else y[idx]
+            elif idx == len(y) - 1:
+                y[idx] = y[idx - 1]
+            else:
+                y[idx] = y[idx + 1] if not np.isclose(y[idx + 1], 0.0, atol=1e-6) else y[idx - 1]
+
+
+        yy = y
+        # # lfilterë¡œ ì²˜ë¦¬ëœ ë°ì´í„°ë¥¼ ì´ìš©í•´ ê·¸ëž˜í”„ë¥¼ ê·¸ë¦¬ê¸°
+        # n = 15
+        # b = [1.0 / n] * n
+        # a = 1
+        # yy = lfilter(b, a, y)
+
+        
+        # ìŠ¤ì¼€ì¼ ì¡°ì •ì„ ìœ„í•´ yy ê°’ ì¡°ì •
+        diff = np.max(yy) - np.min(yy)
+
+        scale_factor = height / diff if diff > 0 else 1
+        yy_scaled = (yy - np.min(yy)) * scale_factor
+        yy_scaled = height - yy_scaled  # Yì¶• ë°˜ì „ ì ìš©
+
+
+        print(yy_scaled)
+        # ê¸°ìš¸ê¸° ê³„ì‚°
+        #len(gradients) = 360
+        #np.diff() : 
+        gradients = np.diff(yy_scaled)  # yy_scaledì— ëŒ€í•œ ê¸°ìš¸ê¸° ê³„ì‚°
+
+
+
+        #publish
+        gradients2list=gradients.tolist()
+        gradient_msg = Float32MultiArray()
+        gradient_msg.data = gradients2list
+        self.publisher_.publish(gradient_msg)
+
+        #hing hagisiro
+        i = 0
+        index_wall_N = 0
+        index_floor_N = 0
+        wall_diff = 10
+        wall_height = 10
+        floor_diff = 22
+        floor_width = 30
+        stair_being_there = False
+        for i in range(len(gradients)):
+            if i is None : gradients[i:] = 0
+            for j, x in enumerate(gradients[i:]):
+                # j = correct the num 
+                if x > wall_diff:
+                    index_wall_N =+ 1
+                    break
+
+            if j > wall_height:
+                for k, y in enumerate(gradients[j+i:]):
+                    if (y > floor_diff) & (k < floor_width):
+                        index_floor_N =+ 1
+            if (index_wall_N >2) & (index_floor_N > 1):
+                stair_being_there = True
+
+        if stair_being_there is True :
+            print('there is stair')
+
+        prev_point = None
+        # xnewì™€ yyë¥¼ ì‚¬ìš©í•´ ê·¸ëž˜í”„ë¥¼ ê·¸ë¦´ ìˆ˜ ìžˆë„ë¡ ë°ì´í„° ìŠ¤ì¼€ì¼ ì¡°ì •
+        xnew_frame_len = np.linspace(0, len(yy) - 1, num=len(yy))
+        for i, (graph_x_val, graph_y_val) in enumerate(zip(xnew_frame_len, yy_scaled[::-1])):
+            x_curr = int(width - ((graph_x_val / np.max(xnew_frame_len)) * width))
+            y_curr = int(graph_y_val)
+            curr_point = (x_curr, y_curr)
+            
+            if prev_point is not None:
+                cv2.line(img, prev_point, curr_point, (0, 255, 0), 2)
+            
+            prev_point = curr_point
+        
+        cv2.imshow('Depth Array', img)
+        cv2.waitKey(1)
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    depth_array_subscriber = DepthArraySubscriber()
+
+    try:
+        rclpy.spin(depth_array_subscriber)
+    except KeyboardInterrupt:
+        print('Depth array subscriber stopped cleanly')
+    except BaseException as e:
+        print(f'Exception in depth array subscriber: {e}')
+        raise
+    finally:
+        depth_array_subscriber.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,45 @@
+[1.152s] Invoking command in '/home/cae/ros2_ws/src/stairs_depth/build/stairs_depth': PYTHONPATH=/home/cae/ros2_ws/src/stairs_depth/build/stairs_depth/prefix_override:/home/cae/ros2_ws/src/stairs_depth/install/stairs_depth/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/cae/ros2_ws/src/stairs_depth/build/stairs_depth/build --no-deps install_data
+[1.534s] running develop
+[1.534s] /home/cae/.local/lib/python3.10/site-packages/setuptools/command/develop.py:40: EasyInstallDeprecationWarning: easy_install command is deprecated.
+[1.534s] !!
+[1.534s] 
+[1.534s]         ********************************************************************************
+[1.534s]         Please avoid running ``setup.py`` and ``easy_install``.
+[1.534s]         Instead, use pypa/build, pypa/installer or other
+[1.534s]         standards-based tools.
+[1.534s] 
+[1.534s]         See https://github.com/pypa/setuptools/issues/917 for details.
+[1.534s]         ********************************************************************************
+[1.534s] 
+[1.534s] !!
+[1.534s]   easy_install.initialize_options(self)
+[1.581s] /home/cae/.local/lib/python3.10/site-packages/setuptools/_distutils/cmd.py:66: SetuptoolsDeprecationWarning: setup.py install is deprecated.
+[1.581s] !!
+[1.581s] 
+[1.581s]         ********************************************************************************
+[1.581s]         Please avoid running ``setup.py`` directly.
+[1.581s]         Instead, use pypa/build, pypa/installer or other
+[1.581s]         standards-based tools.
+[1.581s] 
+[1.582s]         See https://blog.ganssle.io/articles/2021/10/setup-py-deprecated.html for details.
+[1.582s]         ********************************************************************************
+[1.582s] 
+[1.582s] !!
+[1.582s]   self.initialize_options()
+[1.836s] running egg_info
+[1.858s] writing stairs_depth.egg-info/PKG-INFO
+[1.858s] writing dependency_links to stairs_depth.egg-info/dependency_links.txt
+[1.859s] writing entry points to stairs_depth.egg-info/entry_points.txt
+[1.859s] writing requirements to stairs_depth.egg-info/requires.txt
+[1.859s] writing top-level names to stairs_depth.egg-info/top_level.txt
+[1.906s] reading manifest file 'stairs_depth.egg-info/SOURCES.txt'
+[1.907s] writing manifest file 'stairs_depth.egg-info/SOURCES.txt'
+[1.960s] running build_ext
+[1.960s] Creating /home/cae/ros2_ws/src/stairs_depth/install/stairs_depth/lib/python3.10/site-packages/stairs-depth.egg-link (link to .)
+[1.961s] Installing stairs_depth script to /home/cae/ros2_ws/src/stairs_depth/install/stairs_depth/lib/stairs_depth
+[1.961s] 
+[1.961s] Installed /home/cae/ros2_ws/src/stairs_depth/build/stairs_depth
+[1.961s] running install_data
+[1.961s] copying resource/stairs_depth -> /home/cae/ros2_ws/src/stairs_depth/install/stairs_depth/share/ament_index/resource_index/packages
+[1.961s] copying package.xml -> /home/cae/ros2_ws/src/stairs_depth/install/stairs_depth/share/stairs_depth
+[1.989s] Invoked command in '/home/cae/ros2_ws/src/stairs_depth/build/stairs_depth' returned '0': PYTHONPATH=/home/cae/ros2_ws/src/stairs_depth/build/stairs_depth/prefix_override:/home/cae/ros2_ws/src/stairs_depth/install/stairs_depth/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py develop --editable --build-directory /home/cae/ros2_ws/src/stairs_depth/build/stairs_depth/build --no-deps install_data
