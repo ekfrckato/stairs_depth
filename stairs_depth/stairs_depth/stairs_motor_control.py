@@ -7,10 +7,22 @@ from dynamixel_sdk import *  # Uses Dynamixel SDK library
 import time
 import ctypes
 import logging
+from rclpy.qos import QoSProfile, qos_profile_sensor_data,  ReliabilityPolicy, HistoryPolicy
+
 class StairsCheckSubscriber(Node):
     def __init__(self):
         super().__init__('stairs_check_subscriber')
-        self.sub_stair = self.create_subscription(String, '/stairs_check', self.stair_rocomotion_control, 10)
+
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+
+        self.sub_stair = self.create_subscription(String, 
+                                                  '/stairs_check', 
+                                                  self.stair_rocomotion_control, 
+                                                  qos_profile)
         self.sub_stair
 
         # 타이머 콜백에서 인자를 전달하지 않는 별도의 함수 호출
@@ -33,7 +45,7 @@ class StairsCheckSubscriber(Node):
         self.OPERATING_MODE_POSITION = 3
         self.BAUDRATE = 57600
         self.PROTOCOL_VERSION = 2.0
-        self.DXL_ID = [3, 4]
+        self.DXL_ID = [3]
         self.DEVICENAME = '/dev/ttyACM0'
         self.TORQUE_ENABLE = 1
         self.TORQUE_DISABLE = 0
@@ -177,7 +189,7 @@ class StairsCheckSubscriber(Node):
             else:
                 print(f"Dynamixel#{self.DXL_ID[i]}: Successfully set to mode {mode}")
 
-            time.sleep(0.2)  # 모드 변경 후 충분한 지연 시간을 추가
+            time.sleep(0.05)  # 모드 변경 후 충분한 지연 시간을 추가
             
             # 현재 모터의 운영 모드를 다시 읽어 확인
             current_mode, dxl_comm_result, dxl_error = self.packetHandler.read1ByteTxRx(
@@ -191,7 +203,7 @@ class StairsCheckSubscriber(Node):
             else:
                 print(f"[ID:{self.DXL_ID[i]}] Failed to read operating mode. {self.packetHandler.getTxRxResult(dxl_comm_result)}")
             
-            time.sleep(0.1)  # 모드 확인 후 추가 지연
+            time.sleep(0.05)  # 모드 확인 후 추가 지연
 
 
     # def timer_callback(self):
@@ -227,15 +239,25 @@ class StairsCheckSubscriber(Node):
         logging.debug(msg.data)
         print(msg.data)
 
-        if msg.data == 'aaa':
+        if msg.data == 'over':
             stair_check_num = 1
+        elif msg.data == 'back':
+            stair_check_num = 3
         else:
             stair_check_num = 0
 
-        dxl_goal_velocity = [100, -100]  # Set desired velocities for both motors
+        turn_over_vel = [150]  # Set desired velocities for both motors
+        turn_back_vel = [-150]
         if stair_check_num == 1:
             print("success receive msg")
-            self.set_vel(dxl_goal_velocity)  # 2초 동안 모터를 움직임
+            self.set_vel(turn_over_vel)  # 2초 동안 모터를 움직임
+            time.sleep(2)  # 2초 동안 대기
+
+            self.set_vel([0, 0])  # 속도 0으로 설정하여 멈춤
+            self.Torque_off()  # 4초 동안 토크를 끈 상태로 유지
+        elif stair_check_num == 3:
+            print("success receive msg")
+            self.set_vel(turn_back_vel)  # 2초 동안 모터를 움직임
             time.sleep(2)  # 2초 동안 대기
 
             self.set_vel([0, 0])  # 속도 0으로 설정하여 멈춤
