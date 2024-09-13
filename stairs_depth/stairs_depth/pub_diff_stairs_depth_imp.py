@@ -15,7 +15,12 @@ class DepthArraySubscriber(Node):
         self.publisher_diff_array = self.create_publisher(Float32MultiArray, '/diff_array_msg', 10)
         self.publisher_depth_img = self.create_publisher(Float32MultiArray, '/depth_imp_img', 10)
         self.publisher_stairs_check = self.create_publisher(String , '/stairs_check', 10)
- 
+        self.get_data = []
+        
+    def capture_data(self, gradients):
+        self.get_data.add(gradients) 
+        
+    
     def opencv_graph(self, msg):
         depth_array = msg.data
         
@@ -85,7 +90,7 @@ class DepthArraySubscriber(Node):
         if stair_being_there is True :
             print('there is stair')
             stairs_check = String()
-            stairs_check.data = 'there is stairs'
+            stairs_check.data = 'over'
             self.publisher_stairs_check.publish(stairs_check)
 
         #publish
