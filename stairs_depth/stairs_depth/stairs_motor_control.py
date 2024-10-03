@@ -45,8 +45,8 @@ class StairsCheckSubscriber(Node):
         self.OPERATING_MODE_POSITION = 3
         self.BAUDRATE = 57600
         self.PROTOCOL_VERSION = 2.0
-        self.DXL_ID = [3]
-        self.DEVICENAME = '/dev/ttyACM0'
+        self.DXL_ID = [10]
+        self.DEVICENAME = '/dev/ttyCM'
         self.TORQUE_ENABLE = 1
         self.TORQUE_DISABLE = 0
         self.DXL_MOVING_STATUS_THRESHOLD = 10
@@ -63,7 +63,7 @@ class StairsCheckSubscriber(Node):
         self.group_vel_SyncWrite = GroupSyncWrite(self.portHandler, self.packetHandler, self.ADDR_GOAL_VEL, self.LEN_GOAL_VEL)
         self.group_vel_SyncRead = GroupSyncRead(self.portHandler, self.packetHandler, self.ADDR_PRESENT_VEL, self.LEN_PRESENT_VEL)
 
-        self.dxl_goal_position = 2048
+        self.dxl_goal_position = 3900
 
         if self.portHandler.openPort():
             print("Succeeded to open the port")
@@ -251,7 +251,7 @@ class StairsCheckSubscriber(Node):
         if stair_check_num == 1:
             print("success receive msg")
             self.set_vel(turn_over_vel)  # 2초 동안 모터를 움직임
-            time.sleep(2)  # 2초 동안 대기
+            time.sleep(1)  # 2초 동안 대기
 
             self.set_vel([0, 0])  # 속도 0으로 설정하여 멈춤
             self.Torque_off()  # 4초 동안 토크를 끈 상태로 유지
