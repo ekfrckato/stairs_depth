@@ -95,7 +95,7 @@ class StairsCheckSubscriber(Node):
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
 
-    def Torque_on(self):
+    def Torque_on(self, DXL_ID):
         for i in range(len(self.DXL_ID)):
             # 현재 위치를 읽어온 후 그 위치로 목표 위치를 설정함
             dxl_present_position, dxl_comm_result, dxl_error = self.packetHandler.read4ByteTxRx(self.portHandler, self.DXL_ID[i], self.ADDR_PRESENT_POSITION)
@@ -129,7 +129,7 @@ class StairsCheckSubscriber(Node):
             else:
                 print(f"Dynamixel#{self.DXL_ID[i]} torque enabled")
 
-    def Torque_off(self):
+    def Torque_off(self, DXL_ID):
         for i in range(len(self.DXL_ID)):
             dxl_comm_result, dxl_error = self.packetHandler.write1ByteTxRx(self.portHandler, self.DXL_ID[i], self.ADDR_TORQUE_ENABLE, self.TORQUE_DISABLE)
             if dxl_comm_result != self.COMM_SUCCESS:
@@ -139,30 +139,31 @@ class StairsCheckSubscriber(Node):
             else:
                 print(f"Dynamixel#{self.DXL_ID[i]} torque disabled")
 
-    def move_init_pos(self, dxl_id, dxl_goal_position):
-        dxl_present_position, dxl_comm_result, dxl_error = self.packetHandler.read4ByteTxRx(self.portHandler, dxl_id, self.ADDR_PRESENT_POSITION)
-        print(f"[ID:{dxl_id}] Present Position: {dxl_present_position}, Goal Position: {dxl_goal_position}")
+    def move_init_pos(self, DXL_ID, dxl_goal_position):
+        for i in range(len(self.DXL_ID)):
+            dxl_present_position, dxl_comm_result, dxl_error = self.packetHandler.read4ByteTxRx(self.portHandler, DXL_ID[i], self.ADDR_PRESENT_POSITION)
+            print(f"[ID:{DXL_ID[i]}] Present Position: {dxl_present_position}, Goal Position: {dxl_goal_position}")
 
-        param_goal_position = [
-            DXL_LOBYTE(DXL_LOWORD(dxl_goal_position)),
-            DXL_HIBYTE(DXL_LOWORD(dxl_goal_position)),
-            DXL_LOBYTE(DXL_HIWORD(dxl_goal_position)),
-            DXL_HIBYTE(DXL_HIWORD(dxl_goal_position))
-        ]
-        
-        dxl_addparam_result = self.group_pos_SyncWrite.addParam(dxl_id, param_goal_position)
-        if not dxl_addparam_result:
-            print(f"[ID:{dxl_id}] groupSyncWrite addparam failed")
-            quit()
+            param_goal_position = [
+                DXL_LOBYTE(DXL_LOWORD(dxl_goal_position)),
+                DXL_HIBYTE(DXL_LOWORD(dxl_goal_position)),
+                DXL_LOBYTE(DXL_HIWORD(dxl_goal_position)),
+                DXL_HIBYTE(DXL_HIWORD(dxl_goal_position))
+            ]
+            
+            dxl_addparam_result = self.group_pos_SyncWrite.addParam(DXL_ID[i], param_goal_position)
+            if not dxl_addparam_result:
+                print(f"[ID:{DXL_ID[i]}] groupSyncWrite addparam failed")
+                quit()
 
-        dxl_comm_result = self.group_pos_SyncWrite.txPacket()
-        if dxl_comm_result != self.COMM_SUCCESS:
-            print(f"[ID:{dxl_id}] {self.packetHandler.getTxRxResult(dxl_comm_result)}")
-        
-        self.group_pos_SyncWrite.clearParam()
-        # self.get_present_pos()
+            dxl_comm_result = self.group_pos_SyncWrite.txPacket()
+            if dxl_comm_result != self.COMM_SUCCESS:
+                print(f"[ID:{DXL_ID[i]}] {self.packetHandler.getTxRxResult(dxl_comm_result)}")
+            
+            self.group_pos_SyncWrite.clearParam()
+            # self.get_present_pos()
 
-    def get_present_pos(self):
+    def get_present_pos(self, DXL_ID):
         dxl_present_positions = [0] * len(self.DXL_ID)
         
         while True:
@@ -178,6 +179,7 @@ class StairsCheckSubscriber(Node):
 
             time.sleep(0.1)
 
+    #torque off -> on
     def set_operating_mode(self, mode):
         time.sleep(0.5)
         self.Torque_off()
@@ -232,6 +234,7 @@ class StairsCheckSubscriber(Node):
 
         self.group_vel_SyncWrite.clearParam()
     
+    #torque on -> off
     def stair_rocomotion_control(self, msg):
         self.Torque_on()
         Format = "%(asctime)s %(message)s"
@@ -242,26 +245,42 @@ class StairsCheckSubscriber(Node):
         
         turn_over_vel = [150]
         turn_back_vel = [-150]
-        turn_linear_vel = [75, -75]
+        turn_linear_vel_down = [75, -75]
         turn_linear_vel_up = [-75, 75]
+        turn_linear_vel_zero = [0, 0]
 
         stair_check_num = None
         if msg.data == 'over':      #E
-            stair_check_num = 1
+            print("success receive msg")
+            self.set_vel(self.DXL_ID[0], turn_over_vel)
+            time.sleep(1)
+            self.set_vel(self.DXL_ID[0], [0])
+
+        # here, make a turn off - on signal for detecting stairs
+
         elif msg.data == 'back':    #Q
-            stair_check_num = 3
-        elif msg.data == 'linear':  #I
+            print("success receive msg")
+            self.set_vel(self.DXL_ID[0], turn_back_vel)
+            time.sleep(1)
+            
+            # 위치 제어 모드로 변경
+            self.set_operating_mode(self.OPERATING_MODE_POSITION)
+            time.sleep(0.1)
+            self.move_init_pos(self.DXL_ID[0], self.dxl_goal_positions[0])
+            self.set_operating_mode(self.OPERATING_MODE_VELOCITY)
+
+        elif msg.data == 'linear':      #I 
             if self.linear == 0:
                 self.linear = 1
             else:
                 self.linear = 0
 
             if self.linear % 2 == 1:
-                self.set_vel(self.DXL_ID[1:3], turn_linear_vel)
+                self.set_vel(self.DXL_ID[1:3], turn_linear_vel_down)
             elif self.linear % 2 == 0:
-                self.set_vel(self.DXL_ID[1:3], [0, 0])
-                self.Torque_off()
-                
+                self.set_vel(self.DXL_ID[1:3], turn_linear_vel_zero)
+                self.Torque_off(self.DXL_ID[1:3])
+
         elif msg.data == 'linear_up':   #O
             if self.linear_up == 0:
                 self.linear_up = 1
@@ -271,31 +290,35 @@ class StairsCheckSubscriber(Node):
             if self.linear_up % 2 == 1:
                 self.set_vel(self.DXL_ID[1:3], turn_linear_vel_up)
             elif self.linear_up % 2 == 0:
-                self.set_vel(self.DXL_ID[1:3], [0, 0])
-                self.Torque_off()
+                self.set_vel(self.DXL_ID[1:3], turn_linear_vel_zero)
+                self.Torque_off(self.DXL_ID[1:3])
 
-        else:
-            stair_check_num = 0
+        if msg.data == 'auto_overcome':      #E
+            print("success receive msg")
+            print("warning : !!! check the verlocity !!! ---- make vel <1.0 m/s>")
+            
+            try :
+                self.set_vel(self.DXL_ID[0], turn_over_vel)
+                time.sleep(1)
+                self.Torque_off(self.DXL_ID[0])
+                time.sleep(6)
+                self.set_vel(self.DXL_ID[1:3], turn_linear_vel_down)
+                time.sleep(4.5)
+                self.set_vel(self.DXL_ID[1:3], turn_linear_vel_zero)
+                self.Torque_off(self.DXL_ID[1:3])
+                time.sleep(1.5)
+                self.set_operating_mode(self.OPERATING_MODE_POSITION)
+                self.move_init_pos(self.DXL_ID[1:3], self.dxl_goal_positions[2])
+                self.set_operating_mode(self.OPERATING_MODE_VELOCITY)
+                time.sleep(10)
+            except KeyboardInterrupt:  # 키보드 인터럽트 발생 시
+                print("KeyboardInterrupt detected, safely stopping the process.")
+                self.Torque_off(self.DXL_ID[0:4])
+                time.sleep(5)
+        # here, make a turn off - on signal for detecting stairs
 
         print(f"linear : {self.linear}, linear_up : {self.linear_up}")
 
-        #계단 인식 시
-        if stair_check_num == 1:
-            print("success receive msg")
-            self.set_vel(self.DXL_ID[0], turn_over_vel)
-            time.sleep(1)
-            self.set_vel(self.DXL_ID[0], [0])
-            # 위치 제어 모드로 변경
-            self.set_operating_mode(self.OPERATING_MODE_POSITION)
-            self.move_init_pos(self.DXL_ID[0], self.dxl_goal_positions[0])
-            self.set_operating_mode(self.OPERATING_MODE_VELOCITY)
-
-        elif stair_check_num == 3:
-            print("success receive msg")
-            self.set_vel(self.DXL_ID[0], turn_back_vel)
-            time.sleep(1)
-            self.set_vel(self.DXL_ID[0], [0])
-            self.Torque_off()
             
 
 
@@ -308,7 +331,10 @@ def main(args=None):
     except KeyboardInterrupt:
         print('Depth array subscriber stopped cleanly')
         stairs_check.set_vel([0, 0])
-        stairs_check.Torque_off()
+        stairs_check.Torque_off(StairsCheckSubscriber.DXL_ID[1:3])
+        print("KeyboardInterrupt detected, safely stopping the process.")
+        StairsCheckSubscriber.Torque_off(StairsCheckSubscriber.DXL_ID[0:4])
+        time.sleep(5)
     except BaseException as e:
         print(f'Exception in depth array subscriber: {e}')
         raise
